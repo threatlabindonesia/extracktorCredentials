@@ -1,5 +1,4 @@
-```markdown
-# Keyword Search Tool
+## Keyword Search Tool
 
 This Python script allows you to search for specific keywords within `.txt` files, extract URLs with associated usernames and passwords (in the format `https://url:username:password`), and save the results in a specified format (JSON, CSV, or TXT).
 
@@ -19,8 +18,7 @@ This Python script allows you to search for specific keywords within `.txt` file
   - `tqdm` for progress bar functionality.
 
 To install the required dependencies, use the following command:
-
-bash
+```markdown
 pip install -r requirements.txt
 ```
 
