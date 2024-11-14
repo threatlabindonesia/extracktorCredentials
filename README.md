@@ -77,7 +77,7 @@ https://test.com,user,password123,/path/to/file2.txt
 
 Feel free to fork this repository, contribute improvements, or open issues for any bugs or suggestions!
 
-## License
+## Acknowledgements
+tqdm for providing the progress bar functionality.
+argparse for parsing command-line arguments.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-```
