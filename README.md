@@ -1,4 +1,4 @@
-## Keyword Search Tool
+## extracktorCredentials
 
 This Python script allows you to search for specific keywords within `.txt` files, extract URLs with associated usernames and passwords (in the format `https://url:username:password`), and save the results in a specified format (JSON, CSV, or TXT).
 
