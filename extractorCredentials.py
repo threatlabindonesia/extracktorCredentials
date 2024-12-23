@@ -4,18 +4,20 @@ import json
 import csv
 import argparse
 from tqdm import tqdm
+import time
+
 
 # Function to print the centered banner
 import os
 
 def show_signature():
     signature = "\n".join([
-        "----------------------------------------------------------------------------\n"
+        "===========================================================================\n"
         "        Welcome to Parsing Tools Extractor Credentials\n"
-        "\n"
+        "===========================================================================\n"
         "          Author: Afif Hidayatullah\n"
         "          Organization: ITSEC Asia\n"
-        "----------------------------------------------------------------------------\n"
+        "===========================================================================\n"
     ])
     
     # Get terminal width
@@ -40,7 +42,7 @@ def search_keywords_in_file(file_name, keywords):
         # List of encodings to try in case of errors
         encodings_to_try = ['utf-8', 'ISO-8859-1', 'utf-16']
         file_content = None
-        
+
         # Try opening the file with different encodings
         for encoding in encodings_to_try:
             try:
@@ -49,37 +51,52 @@ def search_keywords_in_file(file_name, keywords):
                 break  # If successful, break out of the loop
             except UnicodeDecodeError:
                 continue  # Try the next encoding if the current one fails
-        
+
         if file_content is None:
             return [{"error": f"Could not read {file_name} with available encodings", "source": file_name}]
-        
+
+        # Patterns to search for (updated to exclude specific patterns)
+        patterns = [
+            r'(https?://[^\s:]+):([^:]+):([^:\s]+)',            # url:username:password
+            r'([^:\s]+):([^:\s]+):(https?://[^\s]+)',          # username:password:url
+        ]
+
         # Search for keywords in the file content
         for line in file_content:
-            for keyword in keywords:
-                # Search for URL:username:password pattern in each line
-                match = re.search(rf'(https?://[^\s:]+):([^:]+):([^:\s]+)', line, re.IGNORECASE)
-                if match and any(re.search(keyword, match.group(1), re.IGNORECASE) for keyword in keywords):
-                    url, username, password = match.groups()
-                    search_results.append({
-                        "url": url,
-                        "username": username,
-                        "password": password,
-                        "source": file_name
-                    })
+            for pattern in patterns:
+                match = re.search(pattern, line, re.IGNORECASE)
+                if match:
+                    if pattern == patterns[0]:
+                        url, username, password = match.groups()
+                    elif pattern == patterns[1]:
+                        username, password, url = match.groups()
+
+                    # Check if any keyword matches in the detected URL
+                    if any(re.search(keyword, url, re.IGNORECASE) for keyword in keywords):
+                        search_results.append({
+                            "url": url,
+                            "username": username,
+                            "password": password,
+                            "source": file_name
+                        })
+
         return search_results
     except Exception as e:
         return [{"error": f"An error occurred while reading {file_name}: {str(e)}", "source": file_name}]
 
 # Function to save results to the specified output format
 def save_results(search_results, output_file, output_format):
+    # Sort results by the source (file name) to ensure consistent output
+    sorted_results = sorted(search_results, key=lambda x: x.get("source", ""))
+
     if output_format == 'json':
         with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(search_results, f, ensure_ascii=False, indent=4)
+            json.dump(sorted_results, f, ensure_ascii=False, indent=4)
     elif output_format == 'csv':
         with open(output_file, 'w', newline='', encoding='utf-8') as f:
             writer = csv.DictWriter(f, fieldnames=["url", "username", "password", "source"])
             writer.writeheader()
-            for result in search_results:
+            for result in sorted_results:
                 # Skip results with errors
                 if "error" not in result:
                     writer.writerow(result)
@@ -87,7 +104,7 @@ def save_results(search_results, output_file, output_format):
                     print(f"Error: {result['error']} in {result['source']}")
     elif output_format == 'txt':
         with open(output_file, 'w', encoding='utf-8') as f:
-            for result in search_results:
+            for result in sorted_results:
                 # Write URL, username, password, and source, or error message
                 if "error" not in result:
                     f.write(f"URL: {result['url']}, Username: {result['username']}, Password: {result['password']}, Source: {result['source']}\n")
@@ -135,13 +152,16 @@ if __name__ == '__main__':
     # Total number of .txt files to process
     total_files = len(txt_files)
 
-    # Using tqdm to show progress bar based on the total files
-    with tqdm(total=total_files, desc="Processing files", bar_format="{l_bar}{bar} | {percentage:3.0f}%") as progress_bar:
-        # Loop to search keywords in each .txt file
-        for file_name in txt_files:
-            search_results = search_keywords_in_file(file_name, args.keywords)
-            all_search_results.extend(search_results)
-            progress_bar.update(1)  # Update progress bar for each file processed
+    # Using tqdm to show progress bar with additional information
+with tqdm(total=total_files, 
+          desc="Processing files", 
+          bar_format="{l_bar}{bar} | {n_fmt}/{total_fmt} files | Elapsed: {elapsed} | ETA: {remaining}") as progress_bar:
+    # Loop to search keywords in each .txt file
+    for file_name in txt_files:
+        start_time = time.time()  # Track processing start time for each file
+        search_results = search_keywords_in_file(file_name, args.keywords)
+        all_search_results.extend(search_results)
+        progress_bar.update(1)  # Update progress bar for each file processed
 
     # Save results to the specified file format
     save_results(all_search_results, args.output, os.path.splitext(args.output)[-1][1:])
